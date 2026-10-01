@@ -3,14 +3,14 @@ import { getLineCells, getWordFromCells } from '../utils/wordSearchGenerator';
 
 // Distinct colors assigned to found words for easy visual identification
 const FOUND_COLORS = [
-  'bg-emerald-200 text-emerald-900 border-emerald-400',
-  'bg-sky-200 text-sky-900 border-sky-400',
-  'bg-amber-200 text-amber-900 border-amber-400',
-  'bg-purple-200 text-purple-900 border-purple-400',
-  'bg-rose-200 text-rose-900 border-rose-400',
-  'bg-indigo-200 text-indigo-900 border-indigo-400',
-  'bg-teal-200 text-teal-900 border-teal-400',
-  'bg-orange-200 text-orange-900 border-orange-400',
+  'bg-emerald-200 text-emerald-950 border-emerald-400',
+  'bg-sky-200 text-sky-950 border-sky-400',
+  'bg-amber-200 text-amber-950 border-amber-400',
+  'bg-purple-200 text-purple-950 border-purple-400',
+  'bg-rose-200 text-rose-950 border-rose-400',
+  'bg-indigo-200 text-indigo-950 border-indigo-400',
+  'bg-teal-200 text-teal-950 border-teal-400',
+  'bg-orange-200 text-orange-950 border-orange-400',
 ];
 
 export default function WordSearchBoard({
@@ -125,17 +125,17 @@ export default function WordSearchBoard({
 
   // Calculate dynamic font size based on grid size
   const getCellFontSize = () => {
-    if (size <= 8) return 'text-lg sm:text-xl md:text-2xl font-black';
-    if (size <= 10) return 'text-base sm:text-lg md:text-xl font-bold';
-    if (size <= 12) return 'text-sm sm:text-base md:text-lg font-bold';
-    return 'text-xs sm:text-sm md:text-base font-bold';
+    if (size <= 8) return 'text-xl sm:text-2xl md:text-3xl font-black';
+    if (size <= 10) return 'text-lg sm:text-xl md:text-2xl font-bold';
+    if (size <= 12) return 'text-base sm:text-lg md:text-xl font-bold';
+    return 'text-sm sm:text-base md:text-lg font-bold';
   };
 
   return (
-    <div className="bg-white rounded-2xl p-2.5 sm:p-4 shadow-sm border border-slate-200/80 flex flex-col items-center justify-center w-full select-none touch-none">
+    <div className="bg-white rounded-2xl p-1.5 sm:p-3 shadow-xs border border-slate-200/80 flex flex-col items-center justify-center w-full select-none touch-none max-h-full">
       <div
         ref={boardRef}
-        className="grid gap-1 select-none touch-none bg-slate-100 p-2 sm:p-3 rounded-2xl border border-slate-200 shadow-inner w-full aspect-square max-w-[min(100%,calc(100dvh-320px),600px)] lg:max-w-[min(100%,calc(100dvh-180px),600px)]"
+        className="grid gap-1 select-none touch-none bg-slate-100 p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-inner w-full aspect-square max-w-[min(100%,calc(100dvh-170px),580px)] lg:max-w-[min(100%,calc(100dvh-180px),620px)]"
         style={{
           gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
           gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`
@@ -154,7 +154,7 @@ export default function WordSearchBoard({
             if (isSelected) {
               styleClass = "bg-indigo-600 text-white font-extrabold shadow-md scale-105 border-indigo-700 z-10";
             } else if (isFound) {
-              styleClass = `${FOUND_COLORS[foundColorIndex % FOUND_COLORS.length]} font-bold shadow-sm`;
+              styleClass = `${FOUND_COLORS[foundColorIndex % FOUND_COLORS.length]} font-bold shadow-2xs`;
             } else if (isAnswer) {
               styleClass = "bg-amber-100 text-amber-900 border-amber-300 font-bold animate-pulse";
             }

@@ -104,65 +104,50 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-dvh bg-slate-100 text-slate-800 flex flex-col font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+    <div className="h-dvh max-h-dvh bg-slate-100 text-slate-800 flex flex-col font-sans overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <Header
         currentGradeLabel={gradeCorpus?.label || ''}
         dataSource={gradeCorpus?.source || 'local'}
         onRefresh={() => loadPuzzle(selectedGradeKey)}
         isLoading={isLoading}
-      />
-
-      <main className="max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-5 flex-grow flex flex-col gap-4 sm:gap-6 justify-between">
-        {/* Grade Selector */}
+      >
         <GradeSelector
           grades={gradesList}
           selectedGrade={selectedGradeKey}
           onSelectGrade={handleGradeChange}
           disabled={isLoading}
         />
+      </Header>
 
+      <main className="max-w-4xl w-full mx-auto px-2 sm:px-4 py-2 flex-grow flex flex-col min-h-0 overflow-y-auto sm:overflow-hidden justify-start sm:justify-center items-center gap-2 sm:gap-3">
         {isLoading ? (
-          <div className="flex-grow flex flex-col items-center justify-center min-h-[300px] bg-white rounded-2xl shadow-sm border border-slate-200 p-8">
-            <div className="w-12 h-12 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4"></div>
-            <p className="text-slate-600 font-bold text-sm">Loading corpus...</p>
+          <div className="flex-grow flex flex-col items-center justify-center bg-white rounded-2xl shadow-xs border border-slate-200 p-6 w-full my-auto max-h-[300px]">
+            <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-3"></div>
+            <p className="text-slate-600 font-bold text-xs sm:text-sm">Loading corpus...</p>
           </div>
         ) : errorState === 'LOAD_ERROR' ? (
-          <div className="flex-grow flex flex-col items-center justify-center min-h-[300px] bg-white rounded-2xl shadow-sm border border-rose-200 p-8 text-center">
-            <AlertCircle className="w-12 h-12 text-rose-500 mb-3" />
-            <h3 className="text-lg font-bold text-slate-800 mb-1">Unable to load the word corpus.</h3>
-            <p className="text-sm text-slate-500 mb-4">Please check your network connection or try again.</p>
+          <div className="flex-grow flex flex-col items-center justify-center bg-white rounded-2xl shadow-xs border border-rose-200 p-6 text-center w-full my-auto max-h-[300px]">
+            <AlertCircle className="w-10 h-10 text-rose-500 mb-2" />
+            <h3 className="text-base font-bold text-slate-800 mb-1">Unable to load word corpus.</h3>
+            <p className="text-xs text-slate-500 mb-3">Please check your network connection or try again.</p>
             <button
               onClick={() => loadPuzzle(selectedGradeKey)}
-              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl text-sm flex items-center gap-2"
+              className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-medium rounded-xl text-xs flex items-center gap-2 min-h-[38px]"
             >
               <RefreshCw className="w-4 h-4" /> Try Again
             </button>
           </div>
         ) : errorState === 'NO_WORDS' ? (
-          <div className="flex-grow flex flex-col items-center justify-center min-h-[300px] bg-white rounded-2xl shadow-sm border border-amber-200 p-8 text-center">
-            <AlertCircle className="w-12 h-12 text-amber-500 mb-3" />
-            <h3 className="text-lg font-bold text-slate-800 mb-1">No enabled words available.</h3>
-            <p className="text-sm text-slate-500 mb-4">This grade currently has no active words in the database.</p>
+          <div className="flex-grow flex flex-col items-center justify-center bg-white rounded-2xl shadow-xs border border-amber-200 p-6 text-center w-full my-auto max-h-[300px]">
+            <AlertCircle className="w-10 h-10 text-amber-500 mb-2" />
+            <h3 className="text-base font-bold text-slate-800 mb-1">No active words available.</h3>
+            <p className="text-xs text-slate-500">This grade level currently has no active words in the database.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start flex-grow">
-            {/* Word Search Grid */}
-            <div className="lg:col-span-7 flex flex-col items-center justify-center">
-              {puzzle && (
-                <WordSearchBoard
-                  grid={puzzle.grid}
-                  size={puzzle.size}
-                  placedWords={puzzle.placedWords}
-                  foundWords={foundWords}
-                  onWordFound={handleWordFound}
-                  showAnswers={showAnswers}
-                />
-              )}
-            </div>
-
-            {/* Word List Sidebar */}
-            <div className="lg:col-span-5 h-full">
-              {puzzle && (
+          <div className="flex flex-col items-center justify-start w-full gap-2 sm:gap-3 flex-grow min-h-0 my-auto">
+            {/* Words To Find (ALWAYS ABOVE PUZZLE) */}
+            {puzzle && (
+              <div className="w-full flex-none">
                 <WordList
                   placedWords={puzzle.placedWords}
                   foundWords={foundWords}
@@ -171,8 +156,22 @@ export default function App() {
                   onResetProgress={handleResetProgress}
                   elapsedTime={elapsedTime}
                 />
-              )}
-            </div>
+              </div>
+            )}
+
+            {/* Word Search Board */}
+            {puzzle && (
+              <div className="w-full flex-grow flex items-center justify-center min-h-0">
+                <WordSearchBoard
+                  grid={puzzle.grid}
+                  size={puzzle.size}
+                  placedWords={puzzle.placedWords}
+                  foundWords={foundWords}
+                  onWordFound={handleWordFound}
+                  showAnswers={showAnswers}
+                />
+              </div>
+            )}
           </div>
         )}
       </main>
