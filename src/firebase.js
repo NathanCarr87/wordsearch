@@ -39,9 +39,13 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
 
   try {
     const docRef = doc(db, 'corpora', gradeKey);
-    const docSnap = await getDoc(docRef);
+    const fetchPromise = getDoc(docRef);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore timeout')), 600)
+    );
+    const docSnap = await Promise.race([fetchPromise, timeoutPromise]);
 
-    if (docSnap.exists()) {
+    if (docSnap && docSnap.exists()) {
       const data = docSnap.data();
       return {
         grade: gradeKey,

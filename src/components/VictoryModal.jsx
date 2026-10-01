@@ -48,7 +48,7 @@ export default function VictoryModal({ isOpen, gradeLabel, timeSpent, onNewGame 
 
         <button
           onClick={onNewGame}
-          className="w-full py-3.5 px-6 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2 transition-transform active:scale-95"
+          className="w-full py-3.5 px-6 min-h-[48px] rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-200 flex items-center justify-center space-x-2 transition-transform active:scale-95 touch-manipulation"
         >
           <RefreshCw className="w-5 h-5" />
           <span>Play Another Puzzle</span>
