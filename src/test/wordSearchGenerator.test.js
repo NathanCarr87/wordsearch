@@ -21,6 +21,13 @@ describe('Word Search Generator Algorithm', () => {
     }
   });
 
+  it('should handle malformed word lists gracefully without throwing trim errors', () => {
+    const malformed = [{ word: 'APPLE' }, null, undefined, 123, 'HOUSE', 'GARDEN'];
+    const result = generateWordSearch(malformed, 10, ['horizontal', 'vertical'], 3);
+    expect(result.grid.length).toBe(10);
+    expect(result.placedWords.some(pw => pw.word === 'HOUSE' || pw.word === 'GARDEN')).toBe(true);
+  });
+
   it('should return straight line cell path for horizontal, vertical, and diagonal lines', () => {
     // Horizontal line
     const horiz = getLineCells({ row: 1, col: 1 }, { row: 1, col: 4 });

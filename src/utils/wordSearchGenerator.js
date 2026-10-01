@@ -34,8 +34,9 @@ function shuffle(array) {
  * @param {number} maxWords - Maximum number of words to select and place.
  */
 export function generateWordSearch(wordList, size = 10, allowedDirections = ['horizontal', 'vertical', 'diagonal-down'], maxWords = 8) {
-  // Normalize and filter words
-  const cleanWords = wordList
+  // Normalize and filter words safely
+  const cleanWords = (Array.isArray(wordList) ? wordList : [])
+    .filter(w => typeof w === 'string')
     .map(w => w.trim().toUpperCase().replace(/[^A-Z]/g, ''))
     .filter(w => w.length > 1 && w.length <= size);
 

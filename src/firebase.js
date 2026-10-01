@@ -10,6 +10,10 @@ import { AVAILABLE_GRADES, LOCAL_CORPUS_DATA } from './data/wordCorpus';
  */
 
 /**
+ * @typedef {string} GeneratorWord
+ */
+
+/**
  * @typedef {Object} GradeCorpusDoc
  * @property {string} label
  * @property {string} description
@@ -29,7 +33,7 @@ import { AVAILABLE_GRADES, LOCAL_CORPUS_DATA } from './data/wordCorpus';
  * @property {number} gridSize
  * @property {number} maxWords
  * @property {string[]} allowedDirections
- * @property {string[]} words - Filtered list of enabled word strings
+ * @property {GeneratorWord[]} words - Filtered list of enabled word strings
  * @property {('firebase'|'local')} source
  */
 
@@ -68,6 +72,40 @@ export function clearCorpusCache() {
 }
 
 /**
+ * Transforms corpus words (array of CorpusWord objects or strings) into a clean array of string words.
+ * Filters for enabled === true and extracts .word string safely. Handles malformed data gracefully.
+ *
+ * @param {unknown} words - Corpus words list (CorpusWord[], string[], or malformed data)
+ * @returns {GeneratorWord[]} Array of valid word strings
+ */
+export function extractPlayableWords(words) {
+  if (!Array.isArray(words)) {
+    return [];
+  }
+
+  const result = [];
+  for (const entry of words) {
+    if (!entry) continue;
+
+    if (typeof entry === 'string') {
+      const trimmed = entry.trim();
+      if (trimmed.length > 0) {
+        result.push(trimmed);
+      }
+    } else if (typeof entry === 'object') {
+      if (entry.enabled === true && typeof entry.word === 'string') {
+        const trimmed = entry.word.trim();
+        if (trimmed.length > 0) {
+          result.push(trimmed);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
+/**
  * Returns local fallback corpus data for a given grade level.
  *
  * @param {string} gradeKey
@@ -82,7 +120,7 @@ function getLocalFallbackCorpus(gradeKey) {
     gridSize: defaultData.gridSize,
     maxWords: defaultData.maxWords,
     allowedDirections: defaultData.allowedDirections,
-    words: defaultData.words,
+    words: extractPlayableWords(defaultData.words),
     source: 'local'
   };
 }
@@ -111,19 +149,16 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
 
   try {
     const docRef = doc(db, 'wordCorpora', gradeKey);
-    const docSnap = await getDoc(docRef);
+    const fetchPromise = getDoc(docRef);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore fetch timeout')), 3000)
+    );
+
+    const docSnap = await Promise.race([fetchPromise, timeoutPromise]);
 
     if (docSnap.exists()) {
       /** @type {GradeCorpusDoc} */
       const data = docSnap.data();
-
-      // Extract and filter words where enabled === true
-      let enabledWords = [];
-      if (Array.isArray(data.words)) {
-        enabledWords = data.words
-          .filter(w => w && w.enabled === true && typeof w.word === 'string')
-          .map(w => w.word.trim());
-      }
 
       const result = {
         grade: gradeKey,
@@ -134,7 +169,7 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
         allowedDirections: Array.isArray(data.allowedDirections) && data.allowedDirections.length > 0
           ? data.allowedDirections
           : ['horizontal', 'vertical'],
-        words: enabledWords,
+        words: extractPlayableWords(data?.words),
         source: 'firebase'
       };
 

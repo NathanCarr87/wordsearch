@@ -4,7 +4,7 @@ import GradeSelector from './components/GradeSelector';
 import WordSearchBoard from './components/WordSearchBoard';
 import WordList from './components/WordList';
 import VictoryModal from './components/VictoryModal';
-import { getGradeCorpus, getAvailableGrades } from './firebase';
+import { getGradeCorpus, getAvailableGrades, extractPlayableWords } from './firebase';
 import { generateWordSearch } from './utils/wordSearchGenerator';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
@@ -53,14 +53,17 @@ export default function App() {
         return;
       }
 
-      if (!Array.isArray(corpus.words) || corpus.words.length === 0) {
+      // Ensure corpus words are transformed into a clean array of word strings
+      const playableWords = extractPlayableWords(corpus.words);
+
+      if (playableWords.length === 0) {
         setErrorState('NO_WORDS');
         setIsLoading(false);
         return;
       }
 
       const newPuzzle = generateWordSearch(
-        corpus.words,
+        playableWords,
         corpus.gridSize,
         corpus.allowedDirections,
         corpus.maxWords

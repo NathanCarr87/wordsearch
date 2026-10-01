@@ -11,9 +11,39 @@ vi.mock('firebase/firestore', async (importOriginal) => {
 });
 
 import { getDoc } from 'firebase/firestore';
-import { getGradeCorpus, getAvailableGrades, clearCorpusCache } from '../firebase';
+import { getGradeCorpus, getAvailableGrades, clearCorpusCache, extractPlayableWords } from '../firebase';
 
 describe('Firebase Service & Corpus Data', () => {
+  describe('extractPlayableWords', () => {
+    it('should extract word strings from CorpusWord objects where enabled is true', () => {
+      const input = [
+        { word: 'APPLE', difficulty: 1, enabled: true },
+        { word: 'BALL', difficulty: 1, enabled: false },
+        { word: 'CAT', difficulty: 2, enabled: true },
+      ];
+      expect(extractPlayableWords(input)).toEqual(['APPLE', 'CAT']);
+    });
+
+    it('should handle simple string arrays', () => {
+      const input = ['DOG', 'EAGLE', 'FISH'];
+      expect(extractPlayableWords(input)).toEqual(['DOG', 'EAGLE', 'FISH']);
+    });
+
+    it('should handle malformed corpus data gracefully without throwing', () => {
+      expect(extractPlayableWords(null)).toEqual([]);
+      expect(extractPlayableWords(undefined)).toEqual([]);
+      expect(extractPlayableWords('not an array')).toEqual([]);
+      expect(extractPlayableWords([
+        null,
+        undefined,
+        { word: null, enabled: true },
+        { word: 123, enabled: true },
+        { enabled: true },
+        { word: '  VALID  ', enabled: true },
+        '  STRING_WORD  ',
+      ])).toEqual(['VALID', 'STRING_WORD']);
+    });
+  });
   beforeEach(() => {
     clearCorpusCache();
     vi.clearAllMocks();
