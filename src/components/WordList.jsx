@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { CheckCircle2, RotateCcw, Eye, EyeOff, Clock } from 'lucide-react';
+import { CheckCircle2, RotateCcw, Eye, EyeOff, Clock, Printer } from 'lucide-react';
 import { DEFAULT_ANIMATION_PROFILE } from '../utils/animationProfiles';
 
 export default function WordList({
@@ -79,6 +79,15 @@ export default function WordList({
             aria-label="Reset puzzle progress"
           >
             <RotateCcw className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => window.print()}
+            className="p-1.5 rounded-lg text-xs font-bold text-slate-700 bg-slate-100 border border-slate-200 hover:bg-slate-200 transition-colors min-w-[32px] min-h-[32px] flex items-center justify-center touch-manipulation active:scale-95 no-print"
+            title="Print Puzzle"
+            aria-label="Print Puzzle"
+          >
+            <Printer className="w-4 h-4" />
           </button>
         </div>
       </div>

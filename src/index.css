@@ -82,3 +82,82 @@
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Print Stylesheet */
+@media print {
+  @page {
+    size: portrait;
+    margin: 1.5cm;
+  }
+
+  body {
+    background: white !important;
+    color: black !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  header,
+  .no-print,
+  button,
+  [role="dialog"] {
+    display: none !important;
+  }
+
+  div {
+    overflow: visible !important;
+    max-height: none !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    display: block !important;
+  }
+
+  /* Grid board print layout */
+  .grid {
+    background-color: white !important;
+    border: 2px solid #000 !important;
+    max-width: 100% !important;
+    aspect-ratio: 1 / 1 !important;
+    box-shadow: none !important;
+    padding: 4px !important;
+    margin: 16px auto !important;
+    break-inside: avoid !important;
+  }
+
+  .grid > div {
+    background: white !important;
+    color: black !important;
+    border: 1px solid #cbd5e1 !important;
+    box-shadow: none !important;
+    transform: none !important;
+    text-decoration: none !important;
+  }
+
+  /* Word list print layout */
+  .flex-wrap {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+
+  .inline-flex {
+    border: 1px solid #94a3b8 !important;
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    box-shadow: none !important;
+  }
+
+  .inline-flex span {
+    text-decoration: none !important;
+    opacity: 1 !important;
+  }
+
+  .inline-flex svg {
+    display: none !important;
+  }
+}
