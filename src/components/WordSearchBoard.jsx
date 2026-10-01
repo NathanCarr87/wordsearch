@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { getLineCells, getWordFromCells } from '../utils/wordSearchGenerator';
 
 // Distinct colors assigned to found words for easy visual identification
@@ -26,6 +26,16 @@ export default function WordSearchBoard({
   const [isSelecting, setIsSelecting] = useState(false);
   const boardRef = useRef(null);
 
+  const selectionStartRef = useRef(selectionStart);
+  const selectionEndRef = useRef(selectionEnd);
+  const isSelectingRef = useRef(isSelecting);
+
+  useEffect(() => {
+    selectionStartRef.current = selectionStart;
+    selectionEndRef.current = selectionEnd;
+    isSelectingRef.current = isSelecting;
+  }, [selectionStart, selectionEnd, isSelecting]);
+
   // Map cell coordinates to found word indexes for highlighting
   const cellFoundMap = useFoundCellMap(placedWords, foundWords);
   const answerCellMap = useAnswerCellMap(placedWords);
@@ -40,68 +50,95 @@ export default function WordSearchBoard({
     ? [selectionStart]
     : [];
 
-  const handleTouchStart = (r, c) => {
+  const handlePointerDown = (e, r, c) => {
+    if (e.button !== undefined && e.button !== 0) return;
+
+    if (e.cancelable) {
+      e.preventDefault();
+    }
+
     setIsSelecting(true);
     setSelectionStart({ row: r, col: c });
     setSelectionEnd({ row: r, col: c });
   };
 
-  const handleTouchMove = (e) => {
-    if (!isSelecting) return;
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-    if (element && element.dataset && element.dataset.row !== undefined) {
-      const r = parseInt(element.dataset.row, 10);
-      const c = parseInt(element.dataset.col, 10);
-      setSelectionEnd({ row: r, col: c });
-    }
-  };
+  const handleSelectionEnd = useCallback(() => {
+    const start = selectionStartRef.current;
+    const end = selectionEndRef.current;
+    const selecting = isSelectingRef.current;
 
-  const handleSelectionEnd = () => {
-    if (!isSelecting || !selectionStart || !selectionEnd) {
-      setIsSelecting(false);
-      setSelectionStart(null);
-      setSelectionEnd(null);
-      return;
-    }
+    if (selecting && start && end) {
+      const selectedLine = getLineCells(start, end);
+      if (selectedLine) {
+        const selectedWord = getWordFromCells(grid, selectedLine);
+        const reversedWord = selectedWord.split('').reverse().join('');
 
-    const selectedLine = getLineCells(selectionStart, selectionEnd);
-    if (selectedLine) {
-      const selectedWord = getWordFromCells(grid, selectedLine);
-      const reversedWord = selectedWord.split('').reverse().join('');
+        const match = placedWords.find(
+          pw => (pw.word === selectedWord || pw.word === reversedWord) && !foundWords.includes(pw.word)
+        );
 
-      // Check if matches any placed word
-      const match = placedWords.find(
-        pw => (pw.word === selectedWord || pw.word === reversedWord) && !foundWords.includes(pw.word)
-      );
-
-      if (match) {
-        onWordFound(match.word);
+        if (match) {
+          onWordFound(match.word);
+        }
       }
     }
 
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionEnd(null);
-  };
+  }, [grid, placedWords, foundWords, onWordFound]);
 
   useEffect(() => {
-    const handleMouseUp = () => {
-      if (isSelecting) handleSelectionEnd();
+    if (!isSelecting) return;
+
+    const handlePointerMove = (e) => {
+      if (!isSelectingRef.current) return;
+      if (e.cancelable) {
+        e.preventDefault();
+      }
+
+      const element = document.elementFromPoint(e.clientX, e.clientY);
+      const cellElement = element?.closest('[data-row]');
+      if (cellElement && cellElement.dataset) {
+        const r = parseInt(cellElement.dataset.row, 10);
+        const c = parseInt(cellElement.dataset.col, 10);
+        if (!isNaN(r) && !isNaN(c)) {
+          setSelectionEnd(prev => (prev?.row === r && prev?.col === c) ? prev : { row: r, col: c });
+        }
+      }
     };
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => window.removeEventListener('mouseup', handleMouseUp);
-  }, [isSelecting, selectionStart, selectionEnd, grid, placedWords, foundWords]);
+
+    const handlePointerUp = () => {
+      handleSelectionEnd();
+    };
+
+    window.addEventListener('pointermove', handlePointerMove, { passive: false });
+    window.addEventListener('pointerup', handlePointerUp);
+    window.addEventListener('pointercancel', handlePointerUp);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      window.removeEventListener('pointerup', handlePointerUp);
+      window.removeEventListener('pointercancel', handlePointerUp);
+    };
+  }, [isSelecting, handleSelectionEnd]);
+
+  // Calculate dynamic font size based on grid size
+  const getCellFontSize = () => {
+    if (size <= 8) return 'text-lg sm:text-xl md:text-2xl font-black';
+    if (size <= 10) return 'text-base sm:text-lg md:text-xl font-bold';
+    if (size <= 12) return 'text-sm sm:text-base md:text-lg font-bold';
+    return 'text-xs sm:text-sm md:text-base font-bold';
+  };
 
   return (
-    <div className="bg-white rounded-2xl p-4 sm:p-6 shadow-sm border border-slate-200/80 flex flex-col items-center justify-center">
+    <div className="bg-white rounded-2xl p-2.5 sm:p-4 shadow-sm border border-slate-200/80 flex flex-col items-center justify-center w-full select-none touch-none">
       <div
         ref={boardRef}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleSelectionEnd}
-        className="grid gap-1 select-none touch-none bg-slate-100 p-2 sm:p-3 rounded-2xl border border-slate-200 shadow-inner max-w-full overflow-auto"
+        className="grid gap-1 select-none touch-none bg-slate-100 p-2 sm:p-3 rounded-2xl border border-slate-200 shadow-inner w-full aspect-square max-w-[min(100%,calc(100dvh-320px),600px)] lg:max-w-[min(100%,calc(100dvh-180px),600px)]"
         style={{
-          gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`
+          gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
+          gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`
         }}
       >
         {grid.map((row, r) =>
@@ -127,10 +164,8 @@ export default function WordSearchBoard({
                 key={key}
                 data-row={r}
                 data-col={c}
-                onMouseDown={() => handleTouchStart(r, c)}
-                onMouseEnter={() => isSelecting && setSelectionEnd({ row: r, col: c })}
-                onTouchStart={() => handleTouchStart(r, c)}
-                className={`w-7 h-7 sm:w-10 sm:h-10 md:w-11 md:h-11 flex items-center justify-center rounded-lg sm:rounded-xl text-xs sm:text-base font-mono cursor-pointer transition-all border ${styleClass}`}
+                onPointerDown={(e) => handlePointerDown(e, r, c)}
+                className={`w-full h-full aspect-square flex items-center justify-center rounded-md sm:rounded-xl font-mono cursor-pointer transition-all border select-none touch-none ${getCellFontSize()} ${styleClass}`}
               >
                 {letter}
               </div>
