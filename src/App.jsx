@@ -108,6 +108,19 @@ export default function App() {
 
   return (
     <div className="h-dvh max-h-dvh bg-slate-100 text-slate-800 flex flex-col font-sans overflow-hidden pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
+      {/* Printable Header - Visible only when printing */}
+      <div className="hidden print:block mb-4 border-b-2 border-slate-900 pb-3">
+        <div className="flex justify-between items-baseline mb-1">
+          <h1 className="text-2xl font-bold text-black tracking-tight">WordSearch Quest</h1>
+          {gradeCorpus?.label && (
+            <span className="text-lg font-semibold text-slate-700">{gradeCorpus.label}</span>
+          )}
+        </div>
+        <p className="text-sm text-slate-600 italic">
+          Find and circle all the words listed below in the word search puzzle grid.
+        </p>
+      </div>
+
       <Header
         currentGradeLabel={gradeCorpus?.label || ''}
         dataSource={gradeCorpus?.source || 'local'}

@@ -47,9 +47,11 @@ let db = null;
 let isFirebaseInitialized = false;
 
 try {
-  const app = initializeApp(firebaseConfig);
-  db = getFirestore(app);
-  isFirebaseInitialized = true;
+  if (firebaseConfig.apiKey && firebaseConfig.projectId) {
+    const app = initializeApp(firebaseConfig);
+    db = getFirestore(app);
+    isFirebaseInitialized = true;
+  }
 } catch (error) {
   console.warn("Firebase initialization error:", error.message);
 }
