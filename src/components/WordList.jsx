@@ -1,7 +1,36 @@
-import React from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { CheckCircle2, RotateCcw, Eye, EyeOff, Clock } from 'lucide-react';
+import { DEFAULT_ANIMATION_PROFILE } from '../utils/animationProfiles';
 
-export default function WordList({ placedWords, foundWords, showAnswers, onToggleAnswers, onResetProgress, elapsedTime }) {
+export default function WordList({
+  placedWords,
+  foundWords,
+  showAnswers,
+  onToggleAnswers,
+  onResetProgress,
+  elapsedTime,
+  animationProfile = DEFAULT_ANIMATION_PROFILE
+}) {
+  const [newlyFoundWords, setNewlyFoundWords] = useState([]);
+  const prevFoundWordsRef = useRef(foundWords);
+
+  useEffect(() => {
+    const prev = prevFoundWordsRef.current;
+    const added = foundWords.filter(w => !prev.includes(w));
+
+    if (added.length > 0) {
+      setNewlyFoundWords(added);
+      const timer = setTimeout(() => {
+        setNewlyFoundWords([]);
+      }, 500);
+
+      prevFoundWordsRef.current = foundWords;
+      return () => clearTimeout(timer);
+    }
+
+    prevFoundWordsRef.current = foundWords;
+  }, [foundWords]);
+
   const formatTime = (seconds) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -58,17 +87,30 @@ export default function WordList({ placedWords, foundWords, showAnswers, onToggl
       <div className="flex flex-wrap gap-1.5 sm:gap-2 max-h-[110px] sm:max-h-[140px] overflow-y-auto p-0.5 scrollbar-thin">
         {placedWords.map(({ word }) => {
           const isFound = foundWords.includes(word);
+          const isNewlyFound = newlyFoundWords.includes(word);
+
           return (
             <div
               key={word}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all min-h-[32px] touch-manipulation ${
+              style={{
+                '--word-scale': `${animationProfile.wordListScale || 1.1}`
+              }}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-xl text-xs sm:text-sm font-extrabold transition-all duration-200 min-h-[32px] touch-manipulation ${
                 isFound
-                  ? 'bg-emerald-100 text-emerald-800 border border-emerald-300 line-through decoration-2 shadow-2xs'
+                  ? 'bg-emerald-100 text-emerald-900 border border-emerald-300 shadow-2xs'
                   : 'bg-indigo-50/80 text-indigo-950 border border-indigo-100 hover:bg-indigo-100/60'
-              }`}
+              } ${isNewlyFound ? 'animate-word-pop ring-2 ring-emerald-400 z-10' : ''}`}
             >
-              <span className="tracking-wider font-mono uppercase">{word}</span>
-              {isFound && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 flex-shrink-0 ml-0.5" />}
+              <span className={`tracking-wider font-mono uppercase ${isFound ? 'line-through decoration-2 opacity-90' : ''}`}>
+                {word}
+              </span>
+              {isFound && (
+                <CheckCircle2
+                  className={`w-3.5 h-3.5 text-emerald-600 flex-shrink-0 ml-0.5 transition-transform ${
+                    isNewlyFound ? 'scale-125' : 'scale-100'
+                  }`}
+                />
+              )}
             </div>
           );
         })}
