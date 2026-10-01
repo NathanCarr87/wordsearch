@@ -4,12 +4,12 @@ import { GRADE_CORPUS } from './data/wordCorpus';
 
 // Default configuration with safe fallback or Vite env variables
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyKeyForWordSearchApp12345",
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "word-search-grade-app.firebaseapp.com",
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "word-search-grade-app",
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "word-search-grade-app.appspot.com",
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "123456789012",
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || "1:123456789012:web:abcdef123456"
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 let db = null;
@@ -38,7 +38,7 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
   }
 
   try {
-    const docRef = doc(db, 'corpora', gradeKey);
+    const docRef = doc(db, 'wordCorpora', gradeKey);
     const docSnap = await getDoc(docRef);
 
     if (docSnap.exists()) {
@@ -55,6 +55,7 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
       };
     }
   } catch (error) {
+    console.log(error)
     console.info(`Firestore fetch failed or document not found for grade '${gradeKey}'. Using local corpus.`, error.message);
   }
 
