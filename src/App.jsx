@@ -5,6 +5,7 @@ import WordSearchBoard from './components/WordSearchBoard';
 import WordList from './components/WordList';
 import VictoryModal from './components/VictoryModal';
 import { getGradeCorpus, getAvailableGrades } from './firebase';
+import { getAnimationProfile } from './utils/animationProfiles';
 import { generateWordSearch } from './utils/wordSearchGenerator';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 
@@ -19,6 +20,8 @@ export default function App() {
   const [errorState, setErrorState] = useState(null); // 'LOAD_ERROR' | 'NO_WORDS' | null
   const [elapsedTime, setElapsedTime] = useState(0);
   const [isVictory, setIsVictory] = useState(false);
+
+  const animationProfile = getAnimationProfile(selectedGradeKey);
 
   // Load list of available grades
   useEffect(() => {
@@ -155,6 +158,7 @@ export default function App() {
                   onToggleAnswers={() => setShowAnswers(!showAnswers)}
                   onResetProgress={handleResetProgress}
                   elapsedTime={elapsedTime}
+                  animationProfile={animationProfile}
                 />
               </div>
             )}
@@ -169,6 +173,7 @@ export default function App() {
                   foundWords={foundWords}
                   onWordFound={handleWordFound}
                   showAnswers={showAnswers}
+                  animationProfile={animationProfile}
                 />
               </div>
             )}
@@ -181,6 +186,7 @@ export default function App() {
         gradeLabel={gradeCorpus?.label || ''}
         timeSpent={elapsedTime}
         onNewGame={() => loadPuzzle(selectedGradeKey)}
+        animationProfile={animationProfile}
       />
     </div>
   );

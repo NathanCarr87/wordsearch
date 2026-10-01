@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import confetti from 'canvas-confetti';
 import { getLineCells, getWordFromCells } from '../utils/wordSearchGenerator';
+import { DEFAULT_ANIMATION_PROFILE } from '../utils/animationProfiles';
 
 // Distinct colors assigned to found words for easy visual identification
 const FOUND_COLORS = [
@@ -19,13 +21,17 @@ export default function WordSearchBoard({
   placedWords,
   foundWords,
   onWordFound,
-  showAnswers
+  showAnswers,
+  animationProfile = DEFAULT_ANIMATION_PROFILE
 }) {
   const [selectionStart, setSelectionStart] = useState(null);
   const [selectionEnd, setSelectionEnd] = useState(null);
   const [isSelecting, setIsSelecting] = useState(false);
-  const boardRef = useRef(null);
+  const [wrongCells, setWrongCells] = useState([]);
+  const [isShaking, setIsShaking] = useState(false);
+  const [recentFoundCells, setRecentFoundCells] = useState([]);
 
+  const boardRef = useRef(null);
   const selectionStartRef = useRef(selectionStart);
   const selectionEndRef = useRef(selectionEnd);
   const isSelectingRef = useRef(isSelecting);
@@ -57,10 +63,51 @@ export default function WordSearchBoard({
       e.preventDefault();
     }
 
+    // Clear previous wrong error states immediately on new interaction
+    if (wrongCells.length > 0) setWrongCells([]);
+    if (isShaking) setIsShaking(false);
+
     setIsSelecting(true);
     setSelectionStart({ row: r, col: c });
     setSelectionEnd({ row: r, col: c });
   };
+
+  const triggerParticleBurst = useCallback((cells) => {
+    if (!boardRef.current) return;
+
+    const boardRect = boardRef.current.getBoundingClientRect();
+    let centerX = boardRect.left + boardRect.width / 2;
+    let centerY = boardRect.top + boardRect.height / 2;
+
+    if (cells && cells.length > 0) {
+      // Calculate center of target word cells relative to board
+      const minRow = Math.min(...cells.map(c => c.row));
+      const maxRow = Math.max(...cells.map(c => c.row));
+      const minCol = Math.min(...cells.map(c => c.col));
+      const maxCol = Math.max(...cells.map(c => c.col));
+
+      const cellWidth = boardRect.width / size;
+      const cellHeight = boardRect.height / size;
+
+      centerX = boardRect.left + ((minCol + maxCol + 1) / 2) * cellWidth;
+      centerY = boardRect.top + ((minRow + maxRow + 1) / 2) * cellHeight;
+    }
+
+    const originX = Math.max(0.05, Math.min(0.95, centerX / window.innerWidth));
+    const originY = Math.max(0.05, Math.min(0.95, centerY / window.innerHeight));
+
+    confetti({
+      particleCount: animationProfile.particleAmount || 20,
+      spread: 50,
+      startVelocity: 18,
+      origin: { x: originX, y: originY },
+      colors: animationProfile.colors || ['#6366f1', '#10b981', '#f59e0b'],
+      ticks: 80,
+      gravity: 0.9,
+      scalar: animationProfile.intensity === 'playful' ? 0.75 : 0.55,
+      disableForReducedMotion: true
+    });
+  }, [animationProfile, size]);
 
   const handleSelectionEnd = useCallback(() => {
     const start = selectionStartRef.current;
@@ -69,7 +116,7 @@ export default function WordSearchBoard({
 
     if (selecting && start && end) {
       const selectedLine = getLineCells(start, end);
-      if (selectedLine) {
+      if (selectedLine && selectedLine.length > 0) {
         const selectedWord = getWordFromCells(grid, selectedLine);
         const reversedWord = selectedWord.split('').reverse().join('');
 
@@ -78,7 +125,24 @@ export default function WordSearchBoard({
         );
 
         if (match) {
+          // Correct Word Feedback
+          setRecentFoundCells(match.cells);
+          triggerParticleBurst(match.cells);
           onWordFound(match.word);
+
+          setTimeout(() => {
+            setRecentFoundCells([]);
+          }, 400);
+        } else if (selectedLine.length >= 2) {
+          // Wrong Word Feedback (non-punitive, brief shake & red/orange highlight)
+          setWrongCells(selectedLine);
+          setIsShaking(true);
+
+          const shakeDuration = animationProfile.shakeDuration || 200;
+          setTimeout(() => {
+            setWrongCells([]);
+            setIsShaking(false);
+          }, shakeDuration);
         }
       }
     }
@@ -86,7 +150,7 @@ export default function WordSearchBoard({
     setIsSelecting(false);
     setSelectionStart(null);
     setSelectionEnd(null);
-  }, [grid, placedWords, foundWords, onWordFound]);
+  }, [grid, placedWords, foundWords, onWordFound, animationProfile, triggerParticleBurst]);
 
   useEffect(() => {
     if (!isSelecting) return;
@@ -135,23 +199,32 @@ export default function WordSearchBoard({
     <div className="bg-white rounded-2xl p-1.5 sm:p-3 shadow-xs border border-slate-200/80 flex flex-col items-center justify-center w-full select-none touch-none max-h-full">
       <div
         ref={boardRef}
-        className="grid gap-1 select-none touch-none bg-slate-100 p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-inner w-full aspect-square max-w-[min(100%,calc(100dvh-170px),580px)] lg:max-w-[min(100%,calc(100dvh-180px),620px)]"
+        className={`grid gap-1 select-none touch-none bg-slate-100 p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl border border-slate-200/90 shadow-inner w-full aspect-square max-w-[min(100%,calc(100dvh-170px),580px)] lg:max-w-[min(100%,calc(100dvh-180px),620px)] ${
+          isShaking ? 'animate-board-shake' : ''
+        }`}
         style={{
           gridTemplateColumns: `repeat(${size}, minmax(0, 1fr))`,
-          gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`
+          gridTemplateRows: `repeat(${size}, minmax(0, 1fr))`,
+          '--shake-intensity': `${animationProfile.shakeIntensity || 4}px`,
+          '--shake-duration': `${animationProfile.shakeDuration || 200}ms`,
+          '--pop-scale': `${animationProfile.popScale || 1.15}`
         }}
       >
         {grid.map((row, r) =>
           row.map((letter, c) => {
             const key = getCellKey(r, c);
             const isSelected = currentSelectionCells.some(cell => cell.row === r && cell.col === c);
+            const isWrong = wrongCells.some(cell => cell.row === r && cell.col === c);
+            const isRecentFound = recentFoundCells.some(cell => cell.row === r && cell.col === c);
             const foundColorIndex = cellFoundMap.get(key);
             const isFound = foundColorIndex !== undefined;
             const isAnswer = showAnswers && answerCellMap.has(key);
 
             let styleClass = "bg-white text-slate-800 border-slate-200 hover:border-indigo-300 hover:bg-indigo-50/50";
 
-            if (isSelected) {
+            if (isWrong) {
+              styleClass = "cell-wrong-error bg-rose-500 text-white border-rose-600 font-extrabold z-10 shadow-sm";
+            } else if (isSelected) {
               styleClass = "bg-indigo-600 text-white font-extrabold shadow-md scale-105 border-indigo-700 z-10";
             } else if (isFound) {
               styleClass = `${FOUND_COLORS[foundColorIndex % FOUND_COLORS.length]} font-bold shadow-2xs`;
@@ -159,13 +232,15 @@ export default function WordSearchBoard({
               styleClass = "bg-amber-100 text-amber-900 border-amber-300 font-bold animate-pulse";
             }
 
+            const animClass = isRecentFound ? 'animate-cell-pop animate-cell-glow z-20' : '';
+
             return (
               <div
                 key={key}
                 data-row={r}
                 data-col={c}
                 onPointerDown={(e) => handlePointerDown(e, r, c)}
-                className={`w-full h-full aspect-square flex items-center justify-center rounded-md sm:rounded-xl font-mono cursor-pointer transition-all border select-none touch-none ${getCellFontSize()} ${styleClass}`}
+                className={`w-full h-full aspect-square flex items-center justify-center rounded-md sm:rounded-xl font-mono cursor-pointer transition-all border select-none touch-none ${getCellFontSize()} ${styleClass} ${animClass}`}
               >
                 {letter}
               </div>
