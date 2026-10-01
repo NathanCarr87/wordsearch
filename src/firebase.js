@@ -1,6 +1,6 @@
 import { initializeApp } from 'firebase/app';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
-import { AVAILABLE_GRADES } from './data/wordCorpus';
+import { AVAILABLE_GRADES, LOCAL_CORPUS_DATA } from './data/wordCorpus';
 
 /**
  * @typedef {Object} CorpusWord
@@ -68,10 +68,30 @@ export function clearCorpusCache() {
 }
 
 /**
+ * Returns local fallback corpus data for a given grade level.
+ *
+ * @param {string} gradeKey
+ * @returns {GradeCorpus}
+ */
+function getLocalFallbackCorpus(gradeKey) {
+  const defaultData = LOCAL_CORPUS_DATA[gradeKey] || LOCAL_CORPUS_DATA['grade1'];
+  return {
+    grade: gradeKey,
+    label: defaultData.label,
+    description: defaultData.description,
+    gridSize: defaultData.gridSize,
+    maxWords: defaultData.maxWords,
+    allowedDirections: defaultData.allowedDirections,
+    words: defaultData.words,
+    source: 'local'
+  };
+}
+
+/**
  * Fetch corpus configuration and enabled words for a specific grade level.
  * Reads document from `wordCorpora/{gradeKey}` via Firebase client SDK.
  * Uses in-memory cache to avoid unnecessary Firestore requests.
- * Throws an error on failure so caller can render an appropriate error state.
+ * Falls back to local corpus data if Firestore fetch fails or client is offline.
  *
  * @param {string} gradeKey - Key of the grade (e.g. 'kindergarten', 'grade1', etc.)
  * @returns {Promise<GradeCorpus>}
@@ -83,66 +103,52 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
   }
 
   if (!isFirebaseInitialized || !db) {
-    throw new Error("Firebase is not initialized.");
+    console.info(`Firebase not initialized. Using local corpus for '${gradeKey}'.`);
+    const fallback = getLocalFallbackCorpus(gradeKey);
+    corpusCache[gradeKey] = fallback;
+    return fallback;
   }
 
   try {
-    const docRef = doc(db, 'corpora', gradeKey);
-    const fetchPromise = getDoc(docRef);
-    const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('Firestore timeout')), 600)
-    );
-    const docSnap = await Promise.race([fetchPromise, timeoutPromise]);
+    const docRef = doc(db, 'wordCorpora', gradeKey);
+    const docSnap = await getDoc(docRef);
 
-    if (docSnap && docSnap.exists()) {
+    if (docSnap.exists()) {
+      /** @type {GradeCorpusDoc} */
       const data = docSnap.data();
-      return {
+
+      // Extract and filter words where enabled === true
+      let enabledWords = [];
+      if (Array.isArray(data.words)) {
+        enabledWords = data.words
+          .filter(w => w && w.enabled === true && typeof w.word === 'string')
+          .map(w => w.word.trim());
+      }
+
+      const result = {
         grade: gradeKey,
-        label: data.label || defaultData.label,
-        description: data.description || defaultData.description,
-        gridSize: data.gridSize || defaultData.gridSize,
-        maxWords: data.maxWords || defaultData.maxWords,
-        allowedDirections: data.allowedDirections || defaultData.allowedDirections,
-        words: Array.isArray(data.words) && data.words.length > 0 ? data.words : defaultData.words,
+        label: data.label || gradeKey,
+        description: data.description || '',
+        gridSize: data.gridSize || 10,
+        maxWords: data.maxWords || 8,
+        allowedDirections: Array.isArray(data.allowedDirections) && data.allowedDirections.length > 0
+          ? data.allowedDirections
+          : ['horizontal', 'vertical'],
+        words: enabledWords,
         source: 'firebase'
       };
+
+      corpusCache[gradeKey] = result;
+      return result;
     }
   } catch (error) {
-    console.info(`Firestore fetch failed or document not found for grade '${gradeKey}'. Using local corpus.`, error.message);
-  const docRef = doc(db, 'wordCorpora', gradeKey);
-  const docSnap = await getDoc(docRef);
-
-  if (!docSnap.exists()) {
-    throw new Error(`Corpus document for '${gradeKey}' does not exist in Firestore.`);
+    console.info(`Firestore fetch failed or client offline for grade '${gradeKey}'. Using local fallback corpus.`, error.message);
   }
 
-  /** @type {GradeCorpusDoc} */
-  const data = docSnap.data();
-
-  // Extract and filter words where enabled === true
-  let enabledWords = [];
-  if (Array.isArray(data.words)) {
-    enabledWords = data.words
-      .filter(w => w && w.enabled === true && typeof w.word === 'string')
-      .map(w => w.word.trim());
-  }
-
-  const result = {
-    grade: gradeKey,
-    label: data.label || gradeKey,
-    description: data.description || '',
-    gridSize: data.gridSize || 10,
-    maxWords: data.maxWords || 8,
-    allowedDirections: Array.isArray(data.allowedDirections) && data.allowedDirections.length > 0
-      ? data.allowedDirections
-      : ['horizontal', 'vertical'],
-    words: enabledWords,
-    source: 'firebase'
-  };
-
-  // Only cache successfully fetched corpus documents
-  corpusCache[gradeKey] = result;
-  return result;
+  // Fallback to local corpus data if Firestore failed or doc didn't exist
+  const fallback = getLocalFallbackCorpus(gradeKey);
+  corpusCache[gradeKey] = fallback;
+  return fallback;
 }
 
 /**
