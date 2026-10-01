@@ -79,9 +79,26 @@ describe('Firebase Service & Corpus Data', () => {
     expect(getDoc).toHaveBeenCalledTimes(1);
   });
 
-  it('should throw error when Firestore fails or document does not exist', async () => {
-    vi.mocked(getDoc).mockRejectedValueOnce(new Error('Firestore connection error'));
+  it('should fall back to local corpus data when Firestore fails (offline / network error)', async () => {
+    vi.mocked(getDoc).mockRejectedValueOnce(new Error('Failed to get document because the client is offline.'));
 
-    await expect(getGradeCorpus('grade2')).rejects.toThrow('Firestore connection error');
+    const result = await getGradeCorpus('grade2');
+    expect(result.grade).toBe('grade2');
+    expect(result.source).toBe('local');
+    expect(Array.isArray(result.words)).toBe(true);
+    expect(result.words.length).toBeGreaterThan(0);
+    expect(result.words).toContain('ANIMAL');
+  });
+
+  it('should fall back to local corpus data when Firestore document does not exist', async () => {
+    vi.mocked(getDoc).mockResolvedValueOnce({
+      exists: () => false,
+      data: () => null
+    });
+
+    const result = await getGradeCorpus('grade3');
+    expect(result.grade).toBe('grade3');
+    expect(result.source).toBe('local');
+    expect(result.words).toContain('BUTTERFLY');
   });
 });
