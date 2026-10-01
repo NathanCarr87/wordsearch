@@ -104,7 +104,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-800 flex flex-col font-sans">
+    <div className="min-h-dvh bg-slate-100 text-slate-800 flex flex-col font-sans pt-[env(safe-area-inset-top)] pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pr-[env(safe-area-inset-right)]">
       <Header
         currentGradeLabel={gradeCorpus?.label || ''}
         dataSource={gradeCorpus?.source || 'local'}
@@ -112,7 +112,7 @@ export default function App() {
         isLoading={isLoading}
       />
 
-      <main className="max-w-6xl w-full mx-auto px-4 py-6 flex-grow flex flex-col">
+      <main className="max-w-6xl w-full mx-auto px-3 sm:px-6 py-3 sm:py-5 flex-grow flex flex-col gap-4 sm:gap-6 justify-between">
         {/* Grade Selector */}
         <GradeSelector
           grades={gradesList}
@@ -145,9 +145,9 @@ export default function App() {
             <p className="text-sm text-slate-500 mb-4">This grade currently has no active words in the database.</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start flex-grow">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-start flex-grow">
             {/* Word Search Grid */}
-            <div className="lg:col-span-8 flex flex-col items-center">
+            <div className="lg:col-span-7 flex flex-col items-center justify-center">
               {puzzle && (
                 <WordSearchBoard
                   grid={puzzle.grid}
@@ -161,7 +161,7 @@ export default function App() {
             </div>
 
             {/* Word List Sidebar */}
-            <div className="lg:col-span-4 h-full">
+            <div className="lg:col-span-5 h-full">
               {puzzle && (
                 <WordList
                   placedWords={puzzle.placedWords}

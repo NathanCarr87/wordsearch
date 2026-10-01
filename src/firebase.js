@@ -86,6 +86,29 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
     throw new Error("Firebase is not initialized.");
   }
 
+  try {
+    const docRef = doc(db, 'corpora', gradeKey);
+    const fetchPromise = getDoc(docRef);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Firestore timeout')), 600)
+    );
+    const docSnap = await Promise.race([fetchPromise, timeoutPromise]);
+
+    if (docSnap && docSnap.exists()) {
+      const data = docSnap.data();
+      return {
+        grade: gradeKey,
+        label: data.label || defaultData.label,
+        description: data.description || defaultData.description,
+        gridSize: data.gridSize || defaultData.gridSize,
+        maxWords: data.maxWords || defaultData.maxWords,
+        allowedDirections: data.allowedDirections || defaultData.allowedDirections,
+        words: Array.isArray(data.words) && data.words.length > 0 ? data.words : defaultData.words,
+        source: 'firebase'
+      };
+    }
+  } catch (error) {
+    console.info(`Firestore fetch failed or document not found for grade '${gradeKey}'. Using local corpus.`, error.message);
   const docRef = doc(db, 'wordCorpora', gradeKey);
   const docSnap = await getDoc(docRef);
 
