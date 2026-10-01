@@ -1,8 +1,39 @@
 import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, getDoc, collection, getDocs } from 'firebase/firestore';
-import { GRADE_CORPUS } from './data/wordCorpus';
+import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { AVAILABLE_GRADES } from './data/wordCorpus';
 
-// Default configuration with safe fallback or Vite env variables
+/**
+ * @typedef {Object} CorpusWord
+ * @property {string} word
+ * @property {1 | 2 | 3} difficulty
+ * @property {boolean} enabled
+ */
+
+/**
+ * @typedef {Object} GradeCorpusDoc
+ * @property {string} label
+ * @property {string} description
+ * @property {number} gridSize
+ * @property {number} maxWords
+ * @property {string[]} allowedDirections
+ * @property {CorpusWord[]} words
+ * @property {import('firebase/firestore').Timestamp} [updatedAt]
+ * @property {number} [version]
+ */
+
+/**
+ * @typedef {Object} GradeCorpus
+ * @property {string} grade
+ * @property {string} label
+ * @property {string} description
+ * @property {number} gridSize
+ * @property {number} maxWords
+ * @property {string[]} allowedDirections
+ * @property {string[]} words - Filtered list of enabled word strings
+ * @property {('firebase'|'local')} source
+ */
+
+// Default configuration with Vite env variables or fallback
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "AIzaSyDummyKeyForWordSearchApp12345",
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "word-search-grade-app.firebaseapp.com",
@@ -20,21 +51,39 @@ try {
   db = getFirestore(app);
   isFirebaseInitialized = true;
 } catch (error) {
-  console.warn("Firebase initialization warning (using local fallback corpus):", error.message);
+  console.warn("Firebase initialization error:", error.message);
+}
+
+// In-memory cache for loaded grade corpora
+/** @type {Record<string, GradeCorpus>} */
+const corpusCache = {};
+
+/**
+ * Clears the in-memory cache (primarily used for testing)
+ */
+export function clearCorpusCache() {
+  for (const key of Object.keys(corpusCache)) {
+    delete corpusCache[key];
+  }
 }
 
 /**
- * Fetch corpus configuration and words for a specific grade level.
- * Attempts Firestore fetch first, falling back gracefully to local GRADE_CORPUS.
+ * Fetch corpus configuration and enabled words for a specific grade level.
+ * Reads document from `wordCorpora/{gradeKey}` via Firebase client SDK.
+ * Uses in-memory cache to avoid unnecessary Firestore requests.
+ * Throws an error on failure so caller can render an appropriate error state.
  *
  * @param {string} gradeKey - Key of the grade (e.g. 'kindergarten', 'grade1', etc.)
- * @returns {Promise<{grade: string, label: string, description: string, words: string[], gridSize: number, maxWords: number, allowedDirections: string[]}>}
+ * @returns {Promise<GradeCorpus>}
  */
 export async function getGradeCorpus(gradeKey = 'grade1') {
-  const defaultData = GRADE_CORPUS[gradeKey] || GRADE_CORPUS.grade1;
+  // Return cached corpus if available
+  if (corpusCache[gradeKey]) {
+    return corpusCache[gradeKey];
+  }
 
   if (!isFirebaseInitialized || !db) {
-    return { grade: gradeKey, ...defaultData, source: 'local' };
+    throw new Error("Firebase is not initialized.");
   }
 
   try {
@@ -60,22 +109,47 @@ export async function getGradeCorpus(gradeKey = 'grade1') {
     }
   } catch (error) {
     console.info(`Firestore fetch failed or document not found for grade '${gradeKey}'. Using local corpus.`, error.message);
+  const docRef = doc(db, 'wordCorpora', gradeKey);
+  const docSnap = await getDoc(docRef);
+
+  if (!docSnap.exists()) {
+    throw new Error(`Corpus document for '${gradeKey}' does not exist in Firestore.`);
   }
 
-  return { grade: gradeKey, ...defaultData, source: 'local' };
+  /** @type {GradeCorpusDoc} */
+  const data = docSnap.data();
+
+  // Extract and filter words where enabled === true
+  let enabledWords = [];
+  if (Array.isArray(data.words)) {
+    enabledWords = data.words
+      .filter(w => w && w.enabled === true && typeof w.word === 'string')
+      .map(w => w.word.trim());
+  }
+
+  const result = {
+    grade: gradeKey,
+    label: data.label || gradeKey,
+    description: data.description || '',
+    gridSize: data.gridSize || 10,
+    maxWords: data.maxWords || 8,
+    allowedDirections: Array.isArray(data.allowedDirections) && data.allowedDirections.length > 0
+      ? data.allowedDirections
+      : ['horizontal', 'vertical'],
+    words: enabledWords,
+    source: 'firebase'
+  };
+
+  // Only cache successfully fetched corpus documents
+  corpusCache[gradeKey] = result;
+  return result;
 }
 
 /**
  * Returns available grades list with metadata
  */
 export function getAvailableGrades() {
-  return Object.keys(GRADE_CORPUS).map(key => ({
-    key,
-    label: GRADE_CORPUS[key].label,
-    description: GRADE_CORPUS[key].description,
-    gridSize: GRADE_CORPUS[key].gridSize,
-    wordCount: GRADE_CORPUS[key].words.length
-  }));
+  return AVAILABLE_GRADES;
 }
 
 export { db };
